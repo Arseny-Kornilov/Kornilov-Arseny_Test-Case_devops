@@ -1,0 +1,61 @@
+---
+- name: Deploy Prometheus metrics microservice
+  hosts: vm1
+  become: yes
+
+  tasks:
+    - name: Install Python3 and venv
+      apt:
+        name:
+          - python3
+          - python3-venv
+        state: present
+        update_cache: yes
+
+    - name: Create virtual environment
+      command: python3 -m venv /opt/metrics-venv
+      args:
+        creates: /opt/metrics-venv
+
+    - name: Install prometheus-client in venv
+      pip:
+        executable: /opt/metrics-venv/bin/pip
+        name: prometheus-client
+
+    - name: Copy metrics server script
+      copy:
+        src: metrics_server.py
+        dest: /opt/metrics_server.py
+        mode: '0755'
+
+    - name: Create systemd service file
+      copy:
+        dest: /etc/systemd/system/metrics-server.service
+        content: |
+          [Unit]
+          Description=Metrics Server for Prometheus
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=vboxuser
+          ExecStart=/opt/metrics-venv/bin/python /opt/metrics_server.py
+          Restart=always
+          RestartSec=5
+          StandardOutput=journal
+          StandardError=journal
+          KillMode=process
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Start and enable metrics-server service
+      systemd:
+        name: metrics-server
+        state: started
+        enabled: yes
