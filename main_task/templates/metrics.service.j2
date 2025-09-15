@@ -1,0 +1,13 @@
+[Unit]
+Description=Prometheus Metrics Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+ExecStart=/usr/bin/python3 /home/{{ ansible_user }}/metrics_server.py
+WorkingDirectory=/home/{{ ansible_user }}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
